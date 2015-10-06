@@ -1384,9 +1384,8 @@ Variant sockopen_impl(const HostURL &hosturl, VRefParam errnum,
     auto sockItr = s_sockets.find(key);
     if (sockItr != s_sockets.end()) {
       req::ptr<Socket> sock;
-      if (std::dynamic_pointer_cast<SSLSocketData>(sockItr->second)) {
-        auto sslSocketData =
-          std::static_pointer_cast<SSLSocketData>(sockItr->second);
+      if (auto sslSocketData =
+          std::dynamic_pointer_cast<SSLSocketData>(sockItr->second)) {
         sock = req::make<SSLSocket>(sslSocketData);
       } else {
         sock = req::make<Socket>(sockItr->second);

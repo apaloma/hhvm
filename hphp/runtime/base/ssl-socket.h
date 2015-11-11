@@ -107,10 +107,16 @@ private:
 };
 
 struct SSLSocketData : SocketData {
-  SSLSocketData() {}
-  SSLSocketData(int port, int type) : SocketData(port, type) {}
-  virtual bool closeImpl();
-  ~SSLSocketData();
+  SSLSocketData() 
+  {
+    ::printf("SSLSocketData::SSLSocketData\n");
+  }
+  SSLSocketData(int port, int type) : SocketData(port, type)
+  {
+    ::printf("SSLSocketData::SSLSocketData(%d, %d)\n", port, type);
+  }
+  virtual bool closeImpl() override;
+  virtual ~SSLSocketData();
 private:
   friend class SSLSocket;
   bool m_ssl_active{false};
@@ -119,6 +125,7 @@ private:
   bool m_state_set{false};
   bool m_is_blocked{true};
   SSL *m_handle{nullptr};
+  SSL_CTX *m_ctx{nullptr};
   SSLSocket::CryptoMethod m_method{(SSLSocket::CryptoMethod)-1};
   double m_connect_timeout{0};
 };

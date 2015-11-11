@@ -333,6 +333,8 @@ static req::ptr<Socket> create_new_socket(
   int type = SOCK_STREAM;
   const std::string scheme = hosturl.getScheme();
 
+  ::printf("create_new_socket %s\n", scheme.c_str());
+
   if (scheme == "udp" || scheme == "udg") {
     type = SOCK_DGRAM;
   } else if (scheme == "unix") {
@@ -427,6 +429,8 @@ static Variant new_socket_connect(const HostURL &hosturl, double timeout,
   req::ptr<SSLSocket> sslsock;
   std::string sockerr;
   int error;
+
+  ::printf("new_socket_connect %s\n", scheme.c_str());
 
   if (scheme == "udp" || scheme == "udg") {
     type = SOCK_DGRAM;
@@ -1404,13 +1408,15 @@ Variant sockopen_impl(const HostURL &hosturl, VRefParam errnum,
       }
 
       if (sock->getError() == 0 && sock->checkLiveness()) {
+        ::printf("sockopen_impl returning existing socket\n");
         return Variant(sock);
       }
 
+      ::printf("sockopen_impl closing existing socket %d\n", sock->getError());
       // socket had an error earlier, we need to close it, remove it from
       // persistent storage, and create a new one (in that order)
       sock->close();
-      s_sockets.erase(sockItr);
+      s_sockets.erase(key);
     }
   }
 

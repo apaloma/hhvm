@@ -577,6 +577,7 @@ static req::ptr<Socket> socket_accept_impl(
     auto new_fd = accept(sock->fd(), addr, addrlen);
     double timeout = ThreadInfo::s_threadInfo.getNoCheck()->
       m_reqInjectionData.getSocketDefaultTimeout();
+    ::printf("socket_accept_impl creating SSL socket\n");
     sslsock = SSLSocket::Create(new_fd, sock->getType(),
                                 sock->getCryptoMethod(), sock->getAddress(),
                                 sock->getPort(), timeout,

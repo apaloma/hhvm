@@ -38,8 +38,8 @@ struct SocketData : FileData {
   SocketData() { }
   SocketData(int port, int type);
 
-  virtual bool closeImpl();
-  ~SocketData();
+  virtual bool closeImpl() override;
+  virtual ~SocketData();
 
  private:
   friend class Socket;

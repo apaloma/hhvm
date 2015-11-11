@@ -27,18 +27,22 @@ namespace HPHP {
 ///////////////////////////////////////////////////////////////////////////////
 
 bool SSLSocketData::closeImpl() {
+  ::printf("SSLSocketData::closeImpl\n");
   if (m_ssl_active) {
     SSL_shutdown(m_handle);
     m_ssl_active = false;
   }
   if (m_handle) {
     SSL_free(m_handle);
+    SSL_CTX_free(m_ctx);
     m_handle = nullptr;
+    m_ctx = nullptr;
   }
   return SocketData::closeImpl();
 }
 
 SSLSocketData::~SSLSocketData() {
+  ::printf("SSLSocketData::~SSLSocketData\n");
   SSLSocketData::closeImpl();
 }
 
@@ -115,7 +119,7 @@ SSL *SSLSocket::createSSL(SSL_CTX *ctx) {
   ERR_clear_error();
 
   /* look at options in the stream and set appropriate verification flags */
-  if (m_context[s_verify_peer].toBoolean()) {
+  if (false && m_context[s_verify_peer].toBoolean()) {
     /* turn on verification callback */
     SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, verifyCallback);
 
@@ -205,12 +209,16 @@ SSL *SSLSocket::createSSL(SSL_CTX *ctx) {
 SSLSocket::SSLSocket()
 : Socket(std::make_shared<SSLSocketData>()),
   m_data(static_cast<SSLSocketData*>(getSocketData()))
-{}
+{
+  ::printf("SSLSocket::SSLSocket no param\n");
+}
 
 SSLSocket::SSLSocket(std::shared_ptr<SSLSocketData> data)
 : Socket(data),
   m_data(static_cast<SSLSocketData*>(getSocketData()))
-{}
+{
+  ::printf("SSLSocket::SSLSocket data param\n");
+}
 
 StaticString s_ssl("ssl");
 
@@ -219,6 +227,7 @@ SSLSocket::SSLSocket(int sockfd, int type, const req::ptr<StreamContext>& ctx,
 : Socket(std::make_shared<SSLSocketData>(port, type), sockfd, type, address, port),
   m_data(static_cast<SSLSocketData*>(getSocketData()))
 {
+  ::printf("SSLSocket::SSLSocket params\n");
   if (!ctx) {
     return;
   }
@@ -226,9 +235,12 @@ SSLSocket::SSLSocket(int sockfd, int type, const req::ptr<StreamContext>& ctx,
   this->m_context = ctx->getOptions()[s_ssl].toArray();
 }
 
-SSLSocket::~SSLSocket() { }
+SSLSocket::~SSLSocket() {
+  ::printf("SSLSocket::~SSLSocket\n");
+}
 
 void SSLSocket::sweep() {
+  ::printf("SSLSocket::sweep\n");
   SSLSocket::closeImpl();
   File::sweep();
   m_data = nullptr;
@@ -373,6 +385,8 @@ req::ptr<SSLSocket> SSLSocket::Create(
   CryptoMethod method;
   const std::string scheme = hosturl.getScheme();
 
+  ::printf("SSLSocket::Create %s\n", scheme.c_str());
+
   if (scheme == "ssl") {
     method = CryptoMethod::ClientSSLv23;
   } else if (scheme == "sslv2") {
@@ -398,6 +412,8 @@ req::ptr<SSLSocket> SSLSocket::Create(
   int fd, int domain, CryptoMethod method, std::string address, int port,
   double timeout, const req::ptr<StreamContext>& ctx
 ) {
+  ::printf("SSLSocket::Create base %d %s\n", method, address.c_str());
+
   auto sock = req::make<SSLSocket>(
     fd, domain, ctx, address.c_str(), port);
 
@@ -464,7 +480,7 @@ bool SSLSocket::setupCrypto(SSLSocket *session /* = NULL */) {
     return false;
   }
 
-  if (!m_context.exists(s_verify_peer)) {
+  if (false && !m_context.exists(s_verify_peer)) {
     m_context.add(s_verify_peer, true);
   }
 
@@ -536,6 +552,8 @@ bool SSLSocket::setupCrypto(SSLSocket *session /* = NULL */) {
     SSL_CTX_free(ctx);
     return false;
   }
+
+  m_data->m_ctx = ctx;
 
   if (!SSL_set_fd(m_data->m_handle, getFd())) {
     handleError(0, true);
@@ -677,21 +695,23 @@ bool SSLSocket::enableCrypto(bool activate /* = true */) {
     }
 
     if (n == 1) {
-      X509 *peer_cert = SSL_get_peer_certificate(m_data->m_handle);
-      if (!applyVerificationPolicy(peer_cert)) {
+      //X509 *peer_cert = SSL_get_peer_certificate(m_data->m_handle);
+      /*if (!applyVerificationPolicy(peer_cert)) {
         SSL_shutdown(m_data->m_handle);
-      } else {
+      } else {*/
         m_data->m_ssl_active = true;
 
         /* allow the script to capture the peer cert
          * and/or the certificate chain */
-        if (m_context[s_capture_peer_cert].toBoolean()) {
+      /*  if (m_context[s_capture_peer_cert].toBoolean()) {
+          ::printf("Getting peer cert\n");
           m_context.set(s_peer_certificate,
                         Variant(req::make<Certificate>(peer_cert)));
           peer_cert = nullptr;
         }
 
         if (m_context[s_capture_peer_cert_chain].toBoolean()) {
+          ::printf("Getting peer cert chain\n");
           Array arr;
           STACK_OF(X509) *chain = SSL_get_peer_cert_chain(m_data->m_handle);
           if (chain) {
@@ -706,7 +726,7 @@ bool SSLSocket::enableCrypto(bool activate /* = true */) {
 
       if (peer_cert) {
         X509_free(peer_cert);
-      }
+      }*/
     } else  {
       n = errno == EAGAIN ? 0 : -1;
     }
@@ -723,6 +743,7 @@ bool SSLSocket::enableCrypto(bool activate /* = true */) {
 
 bool SSLSocket::checkLiveness() {
   if (getFd() == -1) {
+    ::printf("SSLSocket::checkLiveness fd is -1\n");
     return false;
   }
 
@@ -738,6 +759,7 @@ bool SSLSocket::checkLiveness() {
         if (n <= 0) {
           int err = SSL_get_error(m_data->m_handle, n);
           if (err == SSL_ERROR_SYSCALL) {
+            ::printf("SSLSocket::checkLiveness err was %d so errno == EAGAIN (%d == %d)\n", err, errno, EAGAIN);
             return errno == EAGAIN;
           }
 
@@ -747,6 +769,7 @@ bool SSLSocket::checkLiveness() {
           }
 
           /* any other problem is a fatal error */
+          ::printf("SSLSocket::checkLiveness any other problem %d on fd %d\n", err, getFd());
           return false;
         }
         /* either peek succeeded or there was an error; we
@@ -755,6 +778,7 @@ bool SSLSocket::checkLiveness() {
       }
     } else if (0 == recv(getFd(), &buf, sizeof(buf), MSG_PEEK) &&
                errno != EAGAIN) {
+      ::printf("SSLSocket::checkLiveness recv error on fd %d\n", getFd());
       return false;
     }
   }

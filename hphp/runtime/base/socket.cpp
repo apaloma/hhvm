@@ -120,7 +120,6 @@ Socket::Socket(int sockfd, int type, const char *address /* = NULL */,
 Socket::~Socket() { }
 
 void Socket::sweep() {
-  Socket::closeImpl();
   File::sweep();
   m_data = nullptr;
 }
